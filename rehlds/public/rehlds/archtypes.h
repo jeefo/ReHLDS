@@ -27,8 +27,12 @@
 */#ifndef ARCHTYPES_H
 #define ARCHTYPES_H
 
-#ifdef __x86_64__
+#if defined( __x86_64__ ) || defined( _WIN64 ) || defined( _M_X64 )
 #define X64BITS
+#endif
+
+#if defined( X64BITS )
+#define REHLDS_64BIT
 #endif
 
 #if defined( _WIN32 ) && (! defined( __MINGW32__ ))
@@ -41,8 +45,13 @@ typedef __int32 int32;
 typedef unsigned __int32 uint32;
 typedef __int64 int64;
 typedef unsigned __int64 uint64;
+#if defined( X64BITS )
+typedef __int64 intp;				// intp is an integer that can accomodate a pointer
+typedef unsigned __int64 uintp;		// (ie, sizeof(intp) >= sizeof(int) && sizeof(intp) >= sizeof(void *)
+#else
 typedef __int32 intp;				// intp is an integer that can accomodate a pointer
 typedef unsigned __int32 uintp;		// (ie, sizeof(intp) >= sizeof(int) && sizeof(intp) >= sizeof(void *)
+#endif
 
 #else /* _WIN32 */
 typedef char int8;

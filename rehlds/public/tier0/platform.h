@@ -41,7 +41,12 @@
 #endif
 
 // Used to step into the debugger
+#if defined(_MSC_VER) && defined(REHLDS_64BIT)
+#include <intrin.h>
+#define  DebuggerBreak()  __debugbreak()
+#else
 #define  DebuggerBreak()  __asm { int 3 }
+#endif
 
 // C functions for external declarations that call the appropriate C++ methods
 #ifndef EXPORT
