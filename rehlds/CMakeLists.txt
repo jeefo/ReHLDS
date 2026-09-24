@@ -265,15 +265,20 @@ if (CMAKE_BUILD_TYPE MATCHES Unittests)
 		add_subdirectory(../dep/cppunitlite cppunitlite)
 	endif()
 
-	add_executable(engine ${appversion.sh} ${ENGINE_SRCS})
+	add_executable(engine ${ENGINE_SRCS})
 else()
-	add_library(engine SHARED ${appversion.sh} ${ENGINE_SRCS})
+	add_library(engine SHARED ${ENGINE_SRCS})
 endif()
 
-add_library(steam_api INTERFACE)
 if (WIN32)
-	target_link_libraries(steam_api INTERFACE "${PROJECT_SOURCE_DIR}/lib/win64/steam_api64.lib")
-else()
+	add_library(steam_api INTERFACE)
+	if (CMAKE_SIZEOF_VOID_P EQUAL 4)
+		target_link_libraries(steam_api INTERFACE "${PROJECT_SOURCE_DIR}/lib/steam_api.lib")
+	else()
+		target_link_libraries(steam_api INTERFACE "${PROJECT_SOURCE_DIR}/lib/win64/steam_api64.lib")
+	endif()
+elseif (REHLDS_X64)
+	add_library(steam_api INTERFACE)
 	target_link_libraries(steam_api INTERFACE "${PROJECT_SOURCE_DIR}/lib/linux64/libsteam_api.so")
 endif()
 
@@ -385,7 +390,7 @@ if (WIN32)
 	set_target_properties(engine PROPERTIES
 		OUTPUT_NAME swds
 		PREFIX ""
-		COMPILE_FLAGS ${COMPILE_FLAGS}
+		COMPILE_FLAGS "${COMPILE_FLAGS}"
 	)
 else()
 	if (REHLDS_X64)
@@ -405,8 +410,8 @@ else()
 	set_target_properties(engine PROPERTIES
 		OUTPUT_NAME ${ENGINE_OUTPUT_NAME}
 		PREFIX ""
-		COMPILE_FLAGS ${COMPILE_FLAGS}
-		LINK_FLAGS ${LINK_FLAGS}
+		COMPILE_FLAGS "${COMPILE_FLAGS}"
+		LINK_FLAGS "${LINK_FLAGS}"
 		POSITION_INDEPENDENT_CODE ${REHLDS_PIC}
 	)
 endif()

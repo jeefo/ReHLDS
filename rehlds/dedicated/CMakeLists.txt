@@ -137,9 +137,9 @@ if (NOT TARGET appversion)
 endif()
 
 if (WIN32)
-	add_executable(hlds WIN32 ${appversion.sh} ${DEDICATED_SRCS})
+	add_executable(hlds WIN32 ${DEDICATED_SRCS})
 else()
-	add_executable(hlds ${appversion.sh} ${DEDICATED_SRCS})
+	add_executable(hlds ${DEDICATED_SRCS})
 endif()
 add_dependencies(hlds appversion)
 
@@ -190,14 +190,14 @@ endif()
 if (WIN32)
 	set_target_properties(hlds PROPERTIES
 		OUTPUT_NAME hlds
-		COMPILE_FLAGS ${COMPILE_FLAGS}
+		COMPILE_FLAGS "${COMPILE_FLAGS}"
 	)
 else()
 	set_target_properties(hlds PROPERTIES
 		OUTPUT_NAME hlds_linux
 		PREFIX ""
-		COMPILE_FLAGS ${COMPILE_FLAGS}
-		LINK_FLAGS ${LINK_FLAGS}
+		COMPILE_FLAGS "${COMPILE_FLAGS}"
+		LINK_FLAGS "${LINK_FLAGS}"
 		POSITION_INDEPENDENT_CODE OFF
 	)
 endif()

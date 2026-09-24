@@ -139,19 +139,12 @@ else()
 		dl
 	)
 	set(LINK_FLAGS "${LINK_FLAGS} -Wl,-z,notext")
-
-	set_target_properties(filesystem_stdio PROPERTIES
-		OUTPUT_NAME filesystem_stdio
-		PREFIX ""
-		COMPILE_FLAGS ${COMPILE_FLAGS}
-		LINK_FLAGS ${LINK_FLAGS}
-		POSITION_INDEPENDENT_CODE ${REHLDS_PIC}
-	)
 endif()
 
-if (WIN32)
-	set_target_properties(filesystem_stdio PROPERTIES
-		OUTPUT_NAME filesystem_stdio
-		COMPILE_FLAGS ${COMPILE_FLAGS}
-	)
-endif()
+set_target_properties(filesystem_stdio PROPERTIES
+	OUTPUT_NAME filesystem_stdio
+	PREFIX ""
+	COMPILE_FLAGS "${COMPILE_FLAGS}"
+	LINK_FLAGS "${LINK_FLAGS}"
+	POSITION_INDEPENDENT_CODE ${REHLDS_PIC}
+)

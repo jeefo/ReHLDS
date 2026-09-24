@@ -122,9 +122,9 @@ if (NOT TARGET appversion)
 endif()
 
 if (WIN32)
-	add_executable(hltv WIN32 ${appversion.sh} ${HLTV_SRCS})
+	add_executable(hltv WIN32 ${HLTV_SRCS})
 else()
-	add_executable(hltv ${appversion.sh} ${HLTV_SRCS})
+	add_executable(hltv ${HLTV_SRCS})
 endif()
 add_dependencies(hltv appversion)
 
