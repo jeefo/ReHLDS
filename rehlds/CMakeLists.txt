@@ -15,13 +15,19 @@
 # - Compile with GCC Compiler:
 #    cmake ..
 #    make
+#
+# 64-bit (Linux):
+#    cmake -DX64=ON ..
+# Windows (MSVC, x64):
+#    cmake -G "Visual Studio 17 2022" -A x64 ..
 #----------------------------------------
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.10)
 project(engine CXX)
 
 option(DEBUG "Build with debug information." OFF)
 option(USE_STATIC_LIBSTDC "Enables static linking libstdc++." OFF)
+option(X64 "Build 64-bit target on Linux." OFF)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,66 +36,88 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_SHARED_LIBRARY_CXX_FLAGS "")
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
 
-set(COMPILE_FLAGS "-m32 -U_FORTIFY_SOURCE -DFORTIFY_SOURCE=0")
-set(LINK_FLAGS "-m32")
-
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wall -fno-rtti -fno-exceptions -fno-strict-aliasing -fno-strict-overflow")
-
-# Remove noxref code and data
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -ffunction-sections -fdata-sections")
-
-if (DEBUG)
-	set(COMPILE_FLAGS "${COMPILE_FLAGS} -g3 -O3 -ggdb")
-else()
-	set(COMPILE_FLAGS "${COMPILE_FLAGS} -g0 -O3 -fno-stack-protector")
+set(REHLDS_X64 OFF)
+if (X64)
+	set(REHLDS_X64 ON)
+endif()
+if (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+	set(REHLDS_X64 ON)
 endif()
 
-# Check Intel C++ compiler
-if ("$ENV{CXX}" MATCHES "icpc")
-	# -fp-model=precise
-	# ICC uses -fp-model fast=1 by default for more aggressive optimizations on floating-point calculations
-	# https://software.intel.com/content/www/us/en/develop/documentation/cpp-compiler-developer-guide-and-reference/top/compiler-reference/compiler-options/compiler-option-details/floating-point-options/fp-model-fp.html#fp-model-fp_GUID-99936BBA-1508-4E9F-AC09-FA98613CE2F5
-	set(COMPILE_FLAGS "${COMPILE_FLAGS} \
-		-fp-model=precise\
-		-fasm-blocks\
-		-Qoption,cpp,--treat_func_as_string_literal_cpp")
+if (REHLDS_X64)
+	set(REHLDS_PIC ON)
+else()
+	set(REHLDS_PIC OFF)
+endif()
 
-	set(LINK_FLAGS "${LINK_FLAGS} -static-intel -no-intel-extensions")
+set(COMPILE_FLAGS "")
+set(LINK_FLAGS "")
 
-	if (NOT DEBUG)
-		set(COMPILE_FLAGS "${COMPILE_FLAGS} -ipo")
-		set(LINK_FLAGS "${LINK_FLAGS} -ipo")
+if (MSVC)
+	set(COMPILE_FLAGS "${COMPILE_FLAGS} /W3 /MP /bigobj")
+	if (DEBUG)
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} /Zi /Od")
+	else()
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} /O2")
 	endif()
 else()
-	# Produce code optimized for the most common IA32/AMD64/EM64T processors.
-	# As new processors are deployed in the marketplace, the behavior of this option will change.
-	set(COMPILE_FLAGS "${COMPILE_FLAGS} \
-		-mtune=generic -msse3\
-		-fpermissive -fno-sized-deallocation\
-		-Wno-unknown-pragmas -Wno-invalid-offsetof\
-		-Wno-unused-variable -Wno-unused-result -Wno-unused-function -Wno-delete-non-virtual-dtor\
-		-Wno-write-strings -Wno-format\
-		-Wno-sign-compare -Wno-strict-aliasing -Wno-ignored-attributes")
+	if (NOT REHLDS_X64)
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} -m32")
+		set(LINK_FLAGS "${LINK_FLAGS} -m32")
+	endif()
 
-	# Check if not Clang compiler
-	if (NOT "$ENV{CXX}" MATCHES "clang")
-		set(COMPILE_FLAGS "${COMPILE_FLAGS} -fno-plt -Wno-unused-but-set-variable")
+	set(COMPILE_FLAGS "${COMPILE_FLAGS} -U_FORTIFY_SOURCE -DFORTIFY_SOURCE=0")
+	set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wall -fno-rtti -fno-exceptions -fno-strict-aliasing -fno-strict-overflow")
 
-		# GCC >= 8.3
-		if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8.0)
-			set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-stringop-truncation -Wno-format-truncation -Wno-class-memaccess")
+	# Remove noxref code and data
+	set(COMPILE_FLAGS "${COMPILE_FLAGS} -ffunction-sections -fdata-sections")
+
+	if (DEBUG)
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} -g3 -O3 -ggdb")
+	else()
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} -g0 -O3 -fno-stack-protector")
+	endif()
+
+	# Check Intel C++ compiler
+	if ("$ENV{CXX}" MATCHES "icpc")
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} \
+			-fp-model=precise\
+			-fasm-blocks\
+			-Qoption,cpp,--treat_func_as_string_literal_cpp")
+		set(LINK_FLAGS "${LINK_FLAGS} -static-intel -no-intel-extensions")
+		if (NOT DEBUG)
+			set(COMPILE_FLAGS "${COMPILE_FLAGS} -ipo")
+			set(LINK_FLAGS "${LINK_FLAGS} -ipo")
+		endif()
+	else()
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} \
+			-mtune=generic -msse3\
+			-fpermissive -fno-sized-deallocation\
+			-Wno-unknown-pragmas -Wno-invalid-offsetof\
+			-Wno-unused-variable -Wno-unused-result -Wno-unused-function -Wno-delete-non-virtual-dtor\
+			-Wno-write-strings -Wno-format\
+			-Wno-sign-compare -Wno-strict-aliasing -Wno-ignored-attributes")
+
+		# Check if not Clang compiler
+		if (NOT "$ENV{CXX}" MATCHES "clang")
+			set(COMPILE_FLAGS "${COMPILE_FLAGS} -fno-plt -Wno-unused-but-set-variable")
+
+			# GCC >= 8.3
+			if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8.0)
+				set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-stringop-truncation -Wno-format-truncation -Wno-class-memaccess")
+			endif()
 		endif()
 	endif()
-endif()
 
-# GCC >= 8.3
-if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8.0)
-	set(COMPILE_FLAGS "${COMPILE_FLAGS} -fcf-protection=none")
-endif()
+	# GCC >= 8.3
+	if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8.0)
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} -fcf-protection=none")
+	endif()
 
-if (NOT DEBUG)
-	set(LINK_FLAGS "${LINK_FLAGS} \
-		-Wl,-gc-sections -Wl,--version-script=\"${PROJECT_SOURCE_DIR}/../version_script.lds\"")
+	if (NOT DEBUG)
+		set(LINK_FLAGS "${LINK_FLAGS} \
+			-Wl,-gc-sections -Wl,--version-script=\"${PROJECT_SOURCE_DIR}/../version_script.lds\"")
+	endif()
 endif()
 
 set(PROJECT_SRC_DIR
@@ -186,6 +214,23 @@ set(ENGINE_SRCS
 	rehlds/rehlds_security.cpp
 )
 
+if (REHLDS_X64)
+	list(APPEND ENGINE_SRCS asmlib_stub/asmlib_stub.cpp)
+endif()
+
+if (WIN32)
+	list(APPEND ENGINE_SRCS
+		rehlds/RehldsRuntimeConfig.cpp
+		rehlds/structSizeCheck.cpp
+		testsuite/anonymizer.cpp
+		testsuite/funccalls.cpp
+		testsuite/memory.cpp
+		testsuite/player.cpp
+		testsuite/recorder.cpp
+		testsuite/testsuite.cpp
+	)
+endif()
+
 set(UNITTESTS_SRCS
 	unittests/common_tests.cpp
 	unittests/crc32c_tests.cpp
@@ -221,9 +266,15 @@ if (CMAKE_BUILD_TYPE MATCHES Unittests)
 	endif()
 
 	add_executable(engine ${appversion.sh} ${ENGINE_SRCS})
-	target_link_libraries(engine PRIVATE cppunitlite)
 else()
 	add_library(engine SHARED ${appversion.sh} ${ENGINE_SRCS})
+endif()
+
+add_library(steam_api INTERFACE)
+if (WIN32)
+	target_link_libraries(steam_api INTERFACE "${PROJECT_SOURCE_DIR}/lib/win64/steam_api64.lib")
+else()
+	target_link_libraries(steam_api INTERFACE "${PROJECT_SOURCE_DIR}/lib/linux64/libsteam_api.so")
 endif()
 
 if (NOT TARGET bzip2)
@@ -231,7 +282,12 @@ if (NOT TARGET bzip2)
 endif()
 
 if (NOT TARGET appversion)
-	add_custom_target(appversion DEPENDS COMMAND "${PROJECT_SOURCE_DIR}/version/appversion.sh" "${PROJECT_SOURCE_DIR}/..")
+	if (WIN32)
+		add_custom_target(appversion
+			COMMAND cmd /c "\"${PROJECT_SOURCE_DIR}/version/appversion.bat\" \"${PROJECT_SOURCE_DIR}/version/\" \"${PROJECT_SOURCE_DIR}/\"")
+	else()
+		add_custom_target(appversion DEPENDS COMMAND "${PROJECT_SOURCE_DIR}/version/appversion.sh" "${PROJECT_SOURCE_DIR}/..")
+	endif()
 endif()
 
 add_dependencies(engine appversion)
@@ -243,30 +299,57 @@ target_include_directories(engine PRIVATE
 	${PROJECT_PUBLIC_DIR}
 )
 
-target_compile_definitions(engine PRIVATE
-	SWDS
-	REHLDS_JIT
-	REHLDS_SSE
-	REHLDS_FIXES
-	REHLDS_CHECKS
-	REHLDS_API
-	REHLDS_SELF
-	REHLDS_OPT_PEDANTIC
-	HAVE_OPT_STRTOOLS
-	USE_BREAKPAD_HANDLER
-	_LINUX
-	LINUX
-	_GLIBCXX_USE_CXX11_ABI=0
-	_stricmp=strcasecmp
-	_strnicmp=strncasecmp
-	_strdup=strdup
-	_unlink=unlink
-	_vsnprintf=vsnprintf
-	_vsnwprintf=vswprintf
+if (REHLDS_X64)
+	set(REHLDS_JIT_DEFS "")
+else()
+	set(REHLDS_JIT_DEFS REHLDS_JIT)
+endif()
 
-	$<$<CONFIG:Unittests>:
-	REHLDS_UNIT_TESTS REHLDS_SSE REHLDS_JIT>
-)
+if (WIN32)
+	target_compile_definitions(engine PRIVATE
+		WIN32
+		${REHLDS_JIT_DEFS}
+		REHLDS_SSE
+		REHLDS_FIXES
+		REHLDS_CHECKS
+		REHLDS_API
+		REHLDS_SELF
+		REHLDS_OPT_PEDANTIC
+		HAVE_OPT_STRTOOLS
+		USE_BREAKPAD_HANDLER
+		DEDICATED
+		SWDS
+		_CRT_SECURE_NO_WARNINGS
+
+		$<$<CONFIG:Unittests>:
+		REHLDS_UNIT_TESTS>
+	)
+else()
+	target_compile_definitions(engine PRIVATE
+		SWDS
+		${REHLDS_JIT_DEFS}
+		REHLDS_SSE
+		REHLDS_FIXES
+		REHLDS_CHECKS
+		REHLDS_API
+		REHLDS_SELF
+		REHLDS_OPT_PEDANTIC
+		HAVE_OPT_STRTOOLS
+		USE_BREAKPAD_HANDLER
+		_LINUX
+		LINUX
+		_GLIBCXX_USE_CXX11_ABI=0
+		_stricmp=strcasecmp
+		_strnicmp=strncasecmp
+		_strdup=strdup
+		_unlink=unlink
+		_vsnprintf=vsnprintf
+		_vsnwprintf=vswprintf
+
+		$<$<CONFIG:Unittests>:
+		REHLDS_UNIT_TESTS REHLDS_SSE REHLDS_JIT>
+	)
+endif()
 
 target_sources(engine PRIVATE
 	${COMMON_SRCS}
@@ -276,30 +359,54 @@ target_sources(engine PRIVATE
 	${UNITTESTS_SRCS}>
 )
 
-target_link_libraries(engine PRIVATE
-	dl
-	rt
-	m
-	aelf32
-	bzip2
-	steam_api
-)
+if (WIN32)
+	target_link_libraries(engine PRIVATE
+		psapi
+		ws2_32
+		bzip2
+		steam_api
+	)
+else()
+	set(LINUX_LIBS dl rt m bzip2 steam_api)
+	if (NOT REHLDS_X64)
+		list(APPEND LINUX_LIBS aelf32)
+	endif()
+	target_link_libraries(engine PRIVATE ${LINUX_LIBS})
+endif()
 
 if (USE_STATIC_LIBSTDC)
 	target_compile_definitions(engine PRIVATE BUILD_STATIC_LIBSTDC)
-	set(LINK_FLAGS "${LINK_FLAGS} -static-libgcc -static-libstdc++")
+	if (NOT MSVC)
+		set(LINK_FLAGS "${LINK_FLAGS} -static-libgcc -static-libstdc++")
+	endif()
 endif()
 
-set(LINK_FLAGS "${LINK_FLAGS} \
-	-Wl,-rpath,'$ORIGIN/.' \
-	-L${PROJECT_SOURCE_DIR}/lib/linux32")
+if (WIN32)
+	set_target_properties(engine PROPERTIES
+		OUTPUT_NAME swds
+		PREFIX ""
+		COMPILE_FLAGS ${COMPILE_FLAGS}
+	)
+else()
+	if (REHLDS_X64)
+		set(ENGINE_OUTPUT_NAME engine_amd64)
+	else()
+		set(ENGINE_OUTPUT_NAME engine_i486)
+	endif()
 
-set(LINK_FLAGS "${LINK_FLAGS} -Wl,-z,notext")
+	set(LINK_FLAGS "${LINK_FLAGS} \
+		-Wl,-rpath,'$ORIGIN/.' \
+		-L${PROJECT_SOURCE_DIR}/lib/linux32")
 
-set_target_properties(engine PROPERTIES
-	OUTPUT_NAME engine_i486
-	PREFIX ""
-	COMPILE_FLAGS ${COMPILE_FLAGS}
-	LINK_FLAGS ${LINK_FLAGS}
-	POSITION_INDEPENDENT_CODE OFF
-)
+	if (REHLDS_X64)
+		set(LINK_FLAGS "${LINK_FLAGS} -Wl,-z,notext")
+	endif()
+
+	set_target_properties(engine PROPERTIES
+		OUTPUT_NAME ${ENGINE_OUTPUT_NAME}
+		PREFIX ""
+		COMPILE_FLAGS ${COMPILE_FLAGS}
+		LINK_FLAGS ${LINK_FLAGS}
+		POSITION_INDEPENDENT_CODE ${REHLDS_PIC}
+	)
+endif()

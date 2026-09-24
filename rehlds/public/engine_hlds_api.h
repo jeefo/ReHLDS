@@ -32,6 +32,8 @@
 
 #ifdef _WIN32
 	#define ENGINE_LIB "swds.dll"
+#elif defined(__x86_64__)
+	#define ENGINE_LIB "engine_amd64.so"
 #else
 	#define ENGINE_LIB "engine_i486.so"
 #endif // _WIN32

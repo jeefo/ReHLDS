@@ -1,5 +1,11 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.10)
 project(proxy CXX)
+
+if (X64)
+	set(REHLDS_PIC ON)
+else()
+	set(REHLDS_PIC OFF)
+endif()
 
 option(DEBUG "Build with debug information." OFF)
 
@@ -9,51 +15,59 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Avoid -fPIC option
 set(CMAKE_SHARED_LIBRARY_CXX_FLAGS "")
 
-set(COMPILE_FLAGS "-m32 -U_FORTIFY_SOURCE -DFORTIFY_SOURCE=0")
-set(LINK_FLAGS "-m32")
+set(COMPILE_FLAGS "")
+set(LINK_FLAGS "")
 
-set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wall -fno-exceptions -fno-strict-aliasing -fno-strict-overflow")
-
-if (DEBUG)
-	set(COMPILE_FLAGS "${COMPILE_FLAGS} -g3 -O3 -ggdb")
-else()
-	set(COMPILE_FLAGS "${COMPILE_FLAGS} -g0 -O3 -fno-stack-protector")
-endif()
-
-# Check Intel C++ compiler
-if ("$ENV{CXX}" MATCHES "icpc")
-	set(COMPILE_FLAGS "${COMPILE_FLAGS} -Qoption,cpp,--treat_func_as_string_literal_cpp")
-	set(LINK_FLAGS "${LINK_FLAGS} -static-intel -no-intel-extensions")
-
-	if (NOT DEBUG)
-		set(COMPILE_FLAGS "${COMPILE_FLAGS} -ipo")
-		set(LINK_FLAGS "${LINK_FLAGS} -ipo")
+if (MSVC)
+	set(COMPILE_FLAGS "${COMPILE_FLAGS} /W3 /MP /bigobj")
+	if (DEBUG)
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} /Zi /Od")
+	else()
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} /O2")
 	endif()
 else()
-	# Produce code optimized for the most common IA32/AMD64/EM64T processors.
-	# As new processors are deployed in the marketplace, the behavior of this option will change.
-	set(COMPILE_FLAGS "${COMPILE_FLAGS} \
-		-mtune=generic -msse3 -flto\
-		-fpermissive -fno-sized-deallocation\
-		-Wno-unused-result -Wno-unknown-pragmas -Wno-unused-variable\
-		-Wno-write-strings -Wno-strict-aliasing")
-
-	# Check Clang compiler
-	if ("$ENV{CXX}" MATCHES "clang")
-		set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-unused-private-field")
+	if (X64)
+		set(M32_FLAG "")
 	else()
-		set(COMPILE_FLAGS "${COMPILE_FLAGS} -fno-plt")
+		set(M32_FLAG "-m32")
+	endif()
+	set(COMPILE_FLAGS "${M32_FLAG} -U_FORTIFY_SOURCE -DFORTIFY_SOURCE=0")
+	set(LINK_FLAGS "${M32_FLAG}")
+	set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wall -fno-exceptions -fno-strict-aliasing -fno-strict-overflow")
 
-		# GCC >= 8.3
-		if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8.0)
-			set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-stringop-truncation -Wno-format-truncation")
+	if (DEBUG)
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} -g3 -O3 -ggdb")
+	else()
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} -g0 -O3 -fno-stack-protector")
+	endif()
+
+	if ("$ENV{CXX}" MATCHES "icpc")
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} -Qoption,cpp,--treat_func_as_string_literal_cpp")
+		set(LINK_FLAGS "${LINK_FLAGS} -static-intel -no-intel-extensions")
+		if (NOT DEBUG)
+			set(COMPILE_FLAGS "${COMPILE_FLAGS} -ipo")
+			set(LINK_FLAGS "${LINK_FLAGS} -ipo")
+		endif()
+	else()
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} \
+			-mtune=generic -msse3 -flto\
+			-fpermissive -fno-sized-deallocation\
+			-Wno-unused-result -Wno-unknown-pragmas -Wno-unused-variable\
+			-Wno-write-strings -Wno-strict-aliasing")
+
+		if ("$ENV{CXX}" MATCHES "clang")
+			set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-unused-private-field")
+		else()
+			set(COMPILE_FLAGS "${COMPILE_FLAGS} -fno-plt")
+			if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8.0)
+				set(COMPILE_FLAGS "${COMPILE_FLAGS} -Wno-stringop-truncation -Wno-format-truncation")
+			endif()
 		endif()
 	endif()
-endif()
 
-# GCC >= 8.3
-if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8.0)
-	set(COMPILE_FLAGS "${COMPILE_FLAGS} -fcf-protection=none")
+	if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8.0)
+		set(COMPILE_FLAGS "${COMPILE_FLAGS} -fcf-protection=none")
+	endif()
 endif()
 
 set(PROJECT_SRC_DIR
@@ -107,6 +121,10 @@ set(COMMON_SRCS
 	"../../engine/mem.cpp"
 )
 
+if (WIN32)
+	list(APPEND PROXY_SRCS "src/precompiled.cpp")
+endif()
+
 add_library(proxy SHARED ${PROXY_SRCS})
 
 target_include_directories(proxy PRIVATE
@@ -115,44 +133,65 @@ target_include_directories(proxy PRIVATE
 	${PROJECT_PUBLIC_DIR}
 )
 
-target_compile_definitions(proxy PRIVATE
-	HLTV
-	HLTV_FIXES
-	_LINUX
-	LINUX
-	_GLIBCXX_USE_CXX11_ABI=0
-	_stricmp=strcasecmp
-	_strnicmp=strncasecmp
-	_strdup=strdup
-	_vsnprintf=vsnprintf
-	_snprintf=snprintf
-)
+if (WIN32)
+	target_compile_definitions(proxy PRIVATE
+		HLTV
+		HLTV_FIXES
+		WIN32
+		_WINDOWS
+		_USRDLL
+		PROXY_MODULE
+		_CRT_SECURE_NO_WARNINGS
+	)
+else()
+	target_compile_definitions(proxy PRIVATE
+		HLTV
+		HLTV_FIXES
+		_LINUX
+		LINUX
+		_GLIBCXX_USE_CXX11_ABI=0
+		_stricmp=strcasecmp
+		_strnicmp=strncasecmp
+		_strdup=strdup
+		_vsnprintf=vsnprintf
+		_snprintf=snprintf
+	)
+endif()
 
 target_sources(proxy PRIVATE
 	${COMMON_SRCS}
 )
 
-target_link_libraries(proxy PRIVATE
-	dl
-	m
-	bzip2
-	steam_api
-)
+if (WIN32)
+	target_link_libraries(proxy PRIVATE
+		psapi
+		ws2_32
+		bzip2
+		steam_api
+	)
+else()
+	target_link_libraries(proxy PRIVATE
+		dl
+		m
+		bzip2
+		steam_api
+	)
+
+	set(LINK_FLAGS "${LINK_FLAGS} \
+		-Wl,-rpath,'$ORIGIN/.' \
+		-L${PROJECT_SOURCE_DIR}/../../lib/linux32")
+
+	set(LINK_FLAGS "${LINK_FLAGS} -Wl,-z,notext")
+endif()
 
 if (NOT TARGET bzip2)
 	add_subdirectory(../../../dep/bzip2 lib)
 endif()
 
-set(LINK_FLAGS "${LINK_FLAGS} \
-	-Wl,-rpath,'$ORIGIN/.' \
-	-L${PROJECT_SOURCE_DIR}/../../lib/linux32")
-
-set(LINK_FLAGS "${LINK_FLAGS} -Wl,-z,notext")
-
 set_target_properties(proxy PROPERTIES
 	OUTPUT_NAME proxy
 	PREFIX ""
-	COMPILE_FLAGS ${COMPILE_FLAGS}
-	LINK_FLAGS ${LINK_FLAGS}
-	POSITION_INDEPENDENT_CODE OFF
+	COMPILE_FLAGS "${COMPILE_FLAGS}"
+	LINK_FLAGS "${LINK_FLAGS}"
+	POSITION_INDEPENDENT_CODE ${REHLDS_PIC}
 )
