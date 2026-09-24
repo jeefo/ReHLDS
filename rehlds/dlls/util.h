@@ -29,7 +29,11 @@ inline void MESSAGE_BEGIN( int msg_dest, int msg_type, const float *pOrigin, ent
 extern globalvars_t				*gpGlobals;
 
 // Use this instead of ALLOC_STRING on constant strings
+#ifdef REHLDS_64BIT
 #define STRING(offset)		((const char *)(gpGlobals->pStringBase + (int)(offset)))
+#else
+#define STRING(offset)		((const char *)(gpGlobals->pStringBase + (unsigned int)(offset)))
+#endif
 #if defined(REHLDS_64BIT)
 inline int MAKE_STRING(const char *str)
 {

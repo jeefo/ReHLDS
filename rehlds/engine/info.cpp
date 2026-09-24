@@ -95,7 +95,11 @@ const char* EXT_FUNC Info_ValueForKey(const char *s, const char *lookup)
 		while (*s != '\\' && *s != '\0')
 			s++;
 
+#ifdef REHLDS_64BIT
 		size_t valueLen = Q_min((size_t)(s - value), (size_t)(MAX_KV_LEN - 1));
+#else
+		size_t valueLen = Q_min(s - value, MAX_KV_LEN - 1);
+#endif
 
 		if (keyLen == lookupLen && !Q_strncmp(key, lookup, lookupLen))
 		{

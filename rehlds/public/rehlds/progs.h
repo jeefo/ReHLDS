@@ -69,7 +69,11 @@ extern	char			*pr_strings;
 extern	globalvars_t	gGlobalVariables;
 
 #if !defined(STRING) && defined(SWDS)
+#ifdef REHLDS_64BIT
 #define STRING(offset) ((const char *)(pr_strings + (int)(offset)))
+#else
+#define STRING(offset) ((const char *)(pr_strings + (unsigned int)(offset)))
+#endif
 #endif
 
 //============================================================================
