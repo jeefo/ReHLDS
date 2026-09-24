@@ -663,7 +663,12 @@ void EXT_FUNC CVarRegister(cvar_t *pCvar)
 
 int EXT_FUNC AllocEngineString(const char *szValue)
 {
-	return ED_NewString(szValue) - pr_strings;
+	ptrdiff_t diff = ED_NewString(szValue) - pr_strings;
+	if (diff < INT_MIN || diff > INT_MAX)
+	{
+		Sys_Error("%s: string offset out of range: %s", __func__, szValue);
+	}
+	return (int)diff;
 }
 
 void EXT_FUNC SaveSpawnParms(edict_t *pEdict)

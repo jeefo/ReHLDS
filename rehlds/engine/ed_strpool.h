@@ -34,3 +34,6 @@
 extern char* Ed_StrPool_Alloc(const char* str);
 extern void Ed_StrPool_Reset();
 extern void Ed_StrPool_Init();
+
+// Stable base of the string pool, string_t offsets are relative to it
+extern char* Ed_StrPool_GetBase();

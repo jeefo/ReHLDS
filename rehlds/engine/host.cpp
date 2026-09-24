@@ -635,9 +635,9 @@ void Host_ClearMemory(qboolean bQuiet)
 {
 
 	//Engine string pooling
-#ifdef REHLDS_FIXES
+#if defined(REHLDS_FIXES) || defined(REHLDS_64BIT)
 	Ed_StrPool_Reset();
-#endif //REHLDS_FIXES
+#endif //REHLDS_FIXES || REHLDS_64BIT
 
 	CM_FreePAS();
 	SV_ClearEntities();
@@ -1112,9 +1112,9 @@ int Host_Init(quakeparms_t *parms)
 		Cvar_SetValue("developer", 1.0);
 
 	//Engine string pooling
-#ifdef REHLDS_FIXES
+#if defined(REHLDS_FIXES) || defined(REHLDS_64BIT)
 	Ed_StrPool_Init();
-#endif //REHLDS_FIXES
+#endif //REHLDS_FIXES || REHLDS_64BIT
 
 	FR_Init(); //don't put it under REHLDS_FLIGHT_REC to allow recording via Rehlds API
 

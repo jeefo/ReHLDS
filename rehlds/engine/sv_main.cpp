@@ -422,7 +422,7 @@ qboolean SV_IsPlayerIndex(int index)
 	return (index >= 1 && index <= g_psvs.maxclients);
 }
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(REHLDS_64BIT)
 qboolean __declspec(naked) SV_IsPlayerIndex_wrapped(int index)
 {
 	// Original SV_IsPlayerIndex in swds.dll doesn't modify ecx nor edx.
@@ -441,12 +441,12 @@ qboolean __declspec(naked) SV_IsPlayerIndex_wrapped(int index)
 		retn;
 	}
 }
-#else // _WIN32
+#else // _WIN32 && !REHLDS_64BIT
 qboolean SV_IsPlayerIndex_wrapped(int index)
 {
 	return SV_IsPlayerIndex(index);
 }
-#endif // _WIN32
+#endif // _WIN32 && !REHLDS_64BIT
 
 void SV_ClearPacketEntities(client_frame_t *frame)
 {
@@ -1416,7 +1416,7 @@ void SV_WriteSpawn(sizebuf_t *msg)
 		InitEntityDLLFields(sv_player);
 
 		sv_player->v.colormap = NUM_FOR_EDICT(sv_player);
-		sv_player->v.netname = host_client->name - pr_strings;
+		sv_player->v.netname = AllocEngineString(host_client->name);
 
 		if (host_client->proxy)
 			sv_player->v.flags |= FL_PROXY;
@@ -6469,8 +6469,12 @@ int SV_SpawnServer(qboolean bIsDemo, char *server, char *startspot)
 	else
 		g_psv.startspot[0] = 0;
 
+#if defined(REHLDS_FIXES) || defined(REHLDS_64BIT)
+	pr_strings = Ed_StrPool_GetBase();
+#else
 	pr_strings = gNullString;
-	gGlobalVariables.pStringBase = gNullString;
+#endif
+	gGlobalVariables.pStringBase = pr_strings;
 
 	if (g_psvs.maxclients == 1)
 		Cvar_SetValue("sv_clienttrace", 1.0);
@@ -6597,7 +6601,7 @@ int SV_SpawnServer(qboolean bIsDemo, char *server, char *startspot)
 	g_psv.models[1] = g_psv.worldmodel;
 	SV_ClearWorld();
 	g_psv.model_precache_flags[1] |= RES_FATALIFMISSING;
-	g_psv.model_precache[1] = g_psv.modelname;
+	g_psv.model_precache[1] = ED_NewString(g_psv.modelname);
 
 #ifdef REHLDS_OPT_PEDANTIC
 	{
@@ -6630,7 +6634,7 @@ int SV_SpawnServer(qboolean bIsDemo, char *server, char *startspot)
 
 	g_psv.edicts->free = FALSE;
 	g_psv.edicts->v.modelindex = 1;
-	g_psv.edicts->v.model = (size_t)g_psv.worldmodel - (size_t)pr_strings;
+	g_psv.edicts->v.model = AllocEngineString(g_psv.worldmodel->name);
 	g_psv.edicts->v.solid = SOLID_BSP;
 	g_psv.edicts->v.movetype = MOVETYPE_PUSH;
 
@@ -6640,8 +6644,8 @@ int SV_SpawnServer(qboolean bIsDemo, char *server, char *startspot)
 		gGlobalVariables.coop_ = coop.value;
 
 	gGlobalVariables.serverflags = g_psvs.serverflags;
-	gGlobalVariables.mapname = (size_t)g_psv.name - (size_t)pr_strings;
-	gGlobalVariables.startspot = (size_t)g_psv.startspot - (size_t)pr_strings;
+	gGlobalVariables.mapname = AllocEngineString(g_psv.name);
+	gGlobalVariables.startspot = AllocEngineString(g_psv.startspot);
 	SV_SetMoveVars(&sv_movevars);
 
 	return 1;

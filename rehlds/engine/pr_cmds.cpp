@@ -133,9 +133,9 @@ void EXT_FUNC PF_setmodel_I(edict_t *e, const char *m)
 			e->v.modelindex = i;
 			model_t *mod = g_psv.models[i];
 #ifdef REHLDS_FIXES
-			e->v.model = *check - pr_strings;
+			e->v.model = AllocEngineString(*check);
 #else // REHLDS_FIXES
-			e->v.model = m - pr_strings;
+			e->v.model = AllocEngineString(m);
 #endif // REHLDS_FIXES
 			if (mod)
 			{
@@ -2014,7 +2014,7 @@ edict_t *EXT_FUNC CreateFakeClient_internal(const char *netname)
 	fakeclient->userid = g_userid++;
 	fakeclient->uploading = FALSE;
 	fakeclient->edict = ent;
-	ent->v.netname = (size_t)fakeclient->name - (size_t)pr_strings;
+	ent->v.netname = AllocEngineString(fakeclient->name);
 	ent->v.pContainingEntity = ent;
 	ent->v.flags = FL_FAKECLIENT | FL_CLIENT;
 

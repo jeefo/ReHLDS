@@ -57,6 +57,10 @@ void Ed_StrPool_Init() {
 	g_EdStringPool_Hunk.flags = SIZEBUF_ALLOW_OVERFLOW;
 }
 
+char* Ed_StrPool_GetBase() {
+	return (char*)g_EdStringPool_Hunk.data;
+}
+
 void Ed_StrPool_Reset() {
 	g_EdStringPool_Hunk.cursize = 0;
 	g_EdStringPool_Hunk.flags = SIZEBUF_ALLOW_OVERFLOW;
