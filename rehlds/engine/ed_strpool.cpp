@@ -53,6 +53,11 @@ void Ed_StrPool_Init() {
 	g_EdStringPool_Hunk.maxsize = 128 * 1024;
 	g_EdStringPool_Hunk.data = (byte*) Hunk_AllocName(g_EdStringPool_Hunk.maxsize, "Ed_StrPool");
 	g_EdStringPool_Hunk.cursize = 0;
+#ifdef REHLDS_64BIT
+	// Keep offset 0 as an empty string, so STRING(0) resolves to "" like the 32-bit gNullString base
+	g_EdStringPool_Hunk.cursize = 1;
+	g_EdStringPool_Hunk.data[0] = 0;
+#endif
 	g_EdStringPool_Hunk.buffername = "Ed_StrPool";
 	g_EdStringPool_Hunk.flags = SIZEBUF_ALLOW_OVERFLOW;
 }
@@ -63,6 +68,11 @@ char* Ed_StrPool_GetBase() {
 
 void Ed_StrPool_Reset() {
 	g_EdStringPool_Hunk.cursize = 0;
+#ifdef REHLDS_64BIT
+	// Keep offset 0 as an empty string, so STRING(0) resolves to ""
+	g_EdStringPool_Hunk.cursize = 1;
+	g_EdStringPool_Hunk.data[0] = 0;
+#endif
 	g_EdStringPool_Hunk.flags = SIZEBUF_ALLOW_OVERFLOW;
 	g_EdStringPool.clear();
 }
