@@ -943,7 +943,13 @@ edict_t* EXT_FUNC PF_find_Shared(int eStartSearchAfter, int iFieldToMatch, const
 		if (ed->free)
 			continue;
 
-		char* t = &pr_strings[*(string_t*)((size_t)&ed->v + iFieldToMatch)];
+		string_t off = *(string_t*)((size_t)&ed->v + iFieldToMatch);
+#ifdef REHLDS_64BIT
+		extern sizebuf_t g_EdStringPool_Hunk;
+		if ((unsigned int)off >= (unsigned int)g_EdStringPool_Hunk.cursize)
+			continue;
+#endif
+		char* t = &pr_strings[off];
 		if (t == 0 || t == &pr_strings[0])
 			continue;
 
