@@ -1166,7 +1166,7 @@ int Netchan_CreateFileFragmentsFromBuffer(qboolean server, netchan_t *chan, cons
 
 	chunksize = chan->pfnNetchan_Blocksize(chan->connection_status);
 	send = chunksize;
-	wait = (fragbufwaiting_t *)Mem_ZeroMalloc(0xCu);
+	wait = (fragbufwaiting_t *)Mem_ZeroMalloc(sizeof(fragbufwaiting_t));
 	remaining = size;
 	pos = 0;
 
@@ -1385,7 +1385,7 @@ int Netchan_CreateFileFragments_(qboolean server, netchan_t *chan, const char *f
 	}
 	FS_Close(hfile);
 
-	wait = (fragbufwaiting_t *)Mem_ZeroMalloc(0xCu);
+	wait = (fragbufwaiting_t *)Mem_ZeroMalloc(sizeof(fragbufwaiting_t));
 	remaining = filesize;
 	pos = 0;
 
