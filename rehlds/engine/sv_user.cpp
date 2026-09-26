@@ -532,7 +532,7 @@ void SV_AddLinksToPM_(areanode_t *node, float *pmove_mins, float *pmove_maxs)
 
 	for (l = node->solid_edicts.next; l != &node->solid_edicts; l = next)
 	{
-		check = (edict_t *)&l[-1];
+		check = EDICT_FROM_AREA(l);
 		next = l->next;
 		if (check->v.groupinfo)
 		{
