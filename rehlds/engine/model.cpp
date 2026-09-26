@@ -472,7 +472,7 @@ void Mod_LoadTextures(lump_t *l)
 
 	m->_nummiptex = LittleLong(m->_nummiptex);
 	loadmodel->numtextures = m->_nummiptex;
-	loadmodel->textures = (texture_t **)Hunk_AllocName(4 * loadmodel->numtextures, loadname);
+	loadmodel->textures = (texture_t **)Hunk_AllocName(sizeof(texture_t *) * loadmodel->numtextures, loadname);
 
 	for (int i = 0; i < m->_nummiptex; i++)
 	{
